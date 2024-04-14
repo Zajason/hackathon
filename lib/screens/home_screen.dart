@@ -1,4 +1,5 @@
 
+import 'dart:ffi';
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
@@ -24,24 +25,28 @@ class _HomePageState extends State<HomePage> {
   List<Message> messages = [];
 
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.blueGrey[900],
       key: _scaffoldKey,
       appBar: AppBar(
-        title:  Row(mainAxisAlignment:MainAxisAlignment.center,children:[Text('PedroAI', style: TextStyle(color: Colors.white,fontSize: 40,fontWeight: FontWeight.bold),),SizedBox(width:20),
-        CupertinoButton(onPressed:(){
-          saveChatHistory(messages);
-          setState(() {
-            messages.clear();
-          });
-
-
-        },
-            child:Image(image: AssetImage('lib/assets/images/pedro.png'),height: 40,width: 40,))]),
+        title: Row(mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('PedroAI', style: TextStyle(color: Colors.white,
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold),),
+              SizedBox(width: 20),
+              CupertinoButton(onPressed: () {
+                saveChatHistory(messages);
+                setState(() {
+                  messages.clear();
+                });
+              },
+                  child: Image(image: AssetImage('lib/assets/images/pedro.png'),
+                    height: 40,
+                    width: 40,))
+            ]),
         backgroundColor: Colors.blueGrey[900],
         foregroundColor: Colors.white,
         shadowColor: Colors.white,
@@ -50,16 +55,25 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.start,
 
         children: [
-          Container(color: Colors.white,height: 0.5,width: MediaQuery.of(context).size.width),
+          Container(color: Colors.white, height: 0.5, width: MediaQuery
+              .of(context)
+              .size
+              .width),
 
           messages.isEmpty
-              ?  Container(height:MediaQuery.sizeOf(context).height*0.75,child:const Center(child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[Text(textAlign: TextAlign.center,
-            'You an ask Pedro things like : What can I do to help the environment?',
-            style: TextStyle(color: Colors.white,fontWeight: FontWeight.w200),
+              ? Container(height: MediaQuery
+              .sizeOf(context)
+              .height * 0.75,
+              child: const Center(child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [Text(textAlign: TextAlign.center,
+                    'You an ask Pedro things like : What can I do to help the environment?',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w200),
 
-          ),
-            Icon(Icons.forest,color: Colors.white,weight: 0.2,)
-         ] )))
+                  ),
+                    Icon(Icons.forest, color: Colors.white, weight: 0.2,)
+                  ])))
               :
           Expanded(
             child: ListView.builder(
@@ -71,14 +85,19 @@ class _HomePageState extends State<HomePage> {
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child:Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(30),color:Colors.blueGrey[400]),child:  Row(
+            child: Container(decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                color: Colors.blueGrey[400]), child: Row(
               children: [
                 SizedBox(width: 20),
                 Expanded(
                   child: TextField(
                     style: const TextStyle(color: Colors.white),
                     controller: _controller,
-                    decoration: const InputDecoration(hintText: ' Type your message...', hintStyle: TextStyle(color: Colors.white),border: InputBorder.none),
+                    decoration: const InputDecoration(
+                        hintText: ' Type your message...',
+                        hintStyle: TextStyle(color: Colors.white),
+                        border: InputBorder.none),
                   ),
                 ),
                 IconButton(
@@ -89,41 +108,65 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-          ),),
+            ),),
           const SizedBox(height: 10,)
         ],
       ),
-      drawer: Drawer(child: HistoryScreen(),backgroundColor: Colors.blueGrey[900]),
+      drawer: Drawer(
+          child: HistoryScreen(), backgroundColor: Colors.blueGrey[900]),
     );
   }
 
   Future<void> sendMessage() async {
     var url = Uri.parse('http://10.0.0.59:1234/v1/chat/completions');
+    var chroma = Uri.parse('');
     String userMessage = _controller.text.trim();
     DateTime timestamp = DateTime.now();
 
     if (userMessage.isNotEmpty) {
       setState(() {
-        messages.add(Message(text: userMessage, type: MessageType.User, timestamp: DateTime.now()));
+        messages.add(Message(text: userMessage,
+            type: MessageType.User,
+            timestamp: DateTime.now()));
         _controller.clear();
       });
       saveChatHistory(messages);
     }
 
+    var chroma_body= jsonEncode({
+      "content":userMessage
+    });
+
+    var my_data = DynamicLibrary;
+    try {
+      var secondResponse = await http.post(
+          chroma, body:chroma_body , headers: {'Content-Type': 'application/json'});
+      if (secondResponse.statusCode == 200) {
+        var the_data = jsonDecode(secondResponse.body);
+        my_data = the_data;
+      }
+    }
+    catch (e) {
+      print('Error occurred: $e');
+    }
 
 
     var body = jsonEncode({
       "messages": [
-        {"role": "system", "content": "answer concisely and accurately"},
+        {"role": "system", "content": my_data},
         {"role": "user", "content": userMessage}
       ],
-      "temperature": 0,
-      "max tokens": -1,
+      "temperature": 0.1,
+      "max tokens": 200,
       "stream": false,
     });
 
-    try {
-      var response = await http.post(url, body: body, headers: {'Content-Type': 'application/json'});
+
+
+  try {
+      var response = await http.post(
+          url, body: body, headers: {'Content-Type': 'application/json'});
+
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
         var choices = data['choices'] as List<dynamic>;
@@ -132,7 +175,9 @@ class _HomePageState extends State<HomePage> {
           var content = message?['content'];
           if (content != null) {
             setState(() {
-              messages.add(Message(text: content.toString(), type: MessageType.Model, timestamp: DateTime.now()));
+              messages.add(Message(text: content.toString(),
+                  type: MessageType.Model,
+                  timestamp: DateTime.now()));
               saveChatHistory(messages);
             });
           }
@@ -142,7 +187,6 @@ class _HomePageState extends State<HomePage> {
       print('Error occurred: $e');
     }
   }
-
   Future<void> saveChatHistory(List<Message> messages) async {
     String dateKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final directory = await getApplicationDocumentsDirectory();

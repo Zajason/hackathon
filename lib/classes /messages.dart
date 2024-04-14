@@ -48,7 +48,7 @@ class BubbleMessage extends StatelessWidget {
     Alignment alignment = message.type == MessageType.User
         ? Alignment.topRight
         : Alignment.topLeft;
-    String Name = message.type == MessageType.User ? "You" : "DeskHelperAI";
+    String Name = message.type == MessageType.User ? "You" : "PedroAI";
 
     return Align(
       alignment: alignment,
